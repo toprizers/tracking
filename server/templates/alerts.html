@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Alerts - Employee Monitor{% endblock %}
+{% block page_title %}Alerts{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">All Alerts</h5>
+        <button class="btn btn-sm btn-outline-secondary" onclick="markAllRead()">Mark All Read</button>
+    </div>
+    <div class="card-body">
+        <div class="list-group">
+            {% for alert in alerts %}
+            <div class="list-group-item list-group-item-action {% if not alert.is_read %}bg-light{% endif %} {% if alert.severity == 'critical' %}border-start border-danger border-4{% elif alert.severity == 'warning' %}border-start border-warning border-4{% endif %}">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">
+                            {% if alert.alert_type == 'idle' %}
+                            <i class="fas fa-clock text-warning"></i>
+                            {% elif alert.alert_type == 'input_failure' %}
+                            <i class="fas fa-mouse text-danger"></i>
+                            {% else %}
+                            <i class="fas fa-info-circle text-info"></i>
+                            {% endif %}
+                            {{ alert.alert_type|replace('_', ' ')|title }}
+                            <span class="badge {% if alert.severity == 'critical' %}bg-danger{% elif alert.severity == 'warning' %}bg-warning{% else %}bg-info{% endif %}">
+                                {{ alert.severity }}
+                            </span>
+                        </h6>
+                        <p class="mb-1">{{ alert.message }}</p>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted">{{ alert.created_at.strftime('%d %b %Y, %H:%M') }}</small>
+                        {% if not alert.is_read %}
+                        <br><button class="btn btn-sm btn-outline-success mt-1" onclick="markRead({{ alert.id }})">Mark Read</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not alerts %}
+            <p class="text-muted text-center p-4">No alerts found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function markRead(id) {
+    fetch(`/api/alerts/${id}/read`, {method: 'POST'}).then(() => location.reload());
+}
+function markAllRead() {
+    fetch('/api/alerts/read-all', {method: 'POST'}).then(() => location.reload());
+}
+</script>
+{% endblock %}

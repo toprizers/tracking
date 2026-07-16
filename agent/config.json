@@ -1,0 +1,10 @@
+{
+    "server_url": "http://127.0.0.1:5000",
+    "agent_key": "d2b663f28c62b01d80e3599118bffe8aaaf92270f07af03fa2d8ad1d438c3cb8",
+    "screenshot_interval": 1800,
+    "idle_threshold": 900,
+    "activity_check_interval": 60,
+    "input_test_interval": 300,
+    "max_retries": 3,
+    "retry_delay": 10
+}

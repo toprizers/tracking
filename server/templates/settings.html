@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Employee Monitor{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-lock"></i> Change Password</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/settings/change-password">
+                    <div class="mb-3">
+                        <label class="form-label">Current Password</label>
+                        <input type="password" class="form-control" name="old_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">New Password</label>
+                        <input type="password" class="form-control" name="new_password" required minlength="6">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" name="confirm_password" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Password</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-cog"></i> Monitoring Settings</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Screenshot Interval (seconds)</label>
+                    <input type="number" class="form-control" id="screenshotInterval" value="1800" min="60">
+                    <small class="text-muted">Default: 1800 (30 minutes)</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Idle Threshold (seconds)</label>
+                    <input type="number" class="form-control" id="idleThreshold" value="900" min="60">
+                    <small class="text-muted">Alert after this many seconds of inactivity. Default: 900 (15 minutes)</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Activity Report Interval (seconds)</label>
+                    <input type="number" class="form-control" id="activityInterval" value="60" min="10">
+                    <small class="text-muted">How often agent reports activity. Default: 60 seconds</small>
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings()"><i class="fas fa-save"></i> Save Settings</button>
+                <small class="text-muted d-block mt-2">Note: These settings apply to new agent installations. Existing agents will need to be reconfigured.</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-server"></i> System Info</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr><td><strong>Server Status</strong></td><td><span class="badge bg-success">Running</span></td></tr>
+                    <tr><td><strong>Database</strong></td><td>SQLite (Local)</td></tr>
+                    <tr><td><strong>Version</strong></td><td>1.0.0</td></tr>
+                    <tr><td><strong>Python</strong></td><td>3.x</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> About</h5>
+            </div>
+            <div class="card-body">
+                <h5>Employee Monitoring System</h5>
+                <p class="text-muted">A complete employee monitoring solution with real-time dashboard, screenshots, and activity tracking.</p>
+                <hr>
+                <h6>Features:</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success"></i> Automatic Screenshots</li>
+                    <li><i class="fas fa-check text-success"></i> Mouse/Keyboard Tracking</li>
+                    <li><i class="fas fa-check text-success"></i> Real-time Notifications</li>
+                    <li><i class="fas fa-check text-success"></i> Activity Reports</li>
+                    <li><i class="fas fa-check text-success"></i> Alert System</li>
+                    <li><i class="fas fa-check text-success"></i> Consent-based Monitoring</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-download"></i> Quick Links</h5>
+            </div>
+            <div class="card-body">
+                <a href="/" class="btn btn-outline-primary btn-sm me-2"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                <a href="/employees" class="btn btn-outline-success btn-sm me-2"><i class="fas fa-users"></i> Employees</a>
+                <a href="/screenshots" class="btn btn-outline-info btn-sm me-2"><i class="fas fa-camera"></i> Screenshots</a>
+                <a href="/reports" class="btn btn-outline-warning btn-sm"><i class="fas fa-chart-bar"></i> Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function saveSettings() {
+    const settings = {
+        screenshot_interval: document.getElementById('screenshotInterval').value,
+        idle_threshold: document.getElementById('idleThreshold').value,
+        activity_interval: document.getElementById('activityInterval').value
+    };
+    localStorage.setItem('monitor_settings', JSON.stringify(settings));
+    alert('Settings saved locally. These will be used as defaults for new agents.');
+}
+</script>
+{% endblock %}

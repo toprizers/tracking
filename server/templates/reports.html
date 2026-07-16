@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Employee Monitor{% endblock %}
+{% block page_title %}Activity Reports{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line"></i> Select Employee & Period</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Employee</label>
+                        <select class="form-select" id="empSelect" onchange="loadReport()">
+                            <option value="">-- Select Employee --</option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.department or 'N/A' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Period</label>
+                        <select class="form-select" id="periodSelect" onchange="loadReport()">
+                            <option value="1">Last 1 Day</option>
+                            <option value="7" selected>Last 7 Days</option>
+                            <option value="14">Last 14 Days</option>
+                            <option value="30">Last 30 Days</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-file-export"></i> Export</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-success" onclick="exportCSV()">
+                        <i class="fas fa-file-csv"></i> Download CSV Report
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="exportPDF()">
+                        <i class="fas fa-file-pdf"></i> Download PDF Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h6>Total Clicks</h6>
+                <h2 id="totalClicks">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h6>Total Keystrokes</h6>
+                <h2 id="totalKeys">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h6>Screenshots</h6>
+                <h2 id="totalScreenshots">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h6>Active Sessions</h6>
+                <h2 id="totalSessions">0</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-mouse-pointer"></i> Mouse Activity</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="clicksChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-keyboard"></i> Keyboard Activity</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="keysChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-clock"></i> Idle Time (minutes)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="idleChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-camera"></i> Screenshots Per Day</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="screenshotsChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-table"></i> Activity Log</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Clicks</th>
+                        <th>Keystrokes</th>
+                        <th>Idle (min)</th>
+                        <th>Active (min)</th>
+                        <th>Window</th>
+                    </tr>
+                </thead>
+                <tbody id="activityTable">
+                    <tr><td colspan="6" class="text-center text-muted">Select an employee to view report</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let clicksChart, keysChart, idleChart, screenshotsChart;
+let reportData = null;
+
+function initCharts() {
+    const options = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+
+    clicksChart = new Chart(document.getElementById('clicksChart'), {
+        type: 'bar', data: { labels: [], datasets: [{ label: 'Clicks', data: [], backgroundColor: '#0d6efd' }] }, options
+    });
+    keysChart = new Chart(document.getElementById('keysChart'), {
+        type: 'bar', data: { labels: [], datasets: [{ label: 'Keystrokes', data: [], backgroundColor: '#198754' }] }, options
+    });
+    idleChart = new Chart(document.getElementById('idleChart'), {
+        type: 'line', data: { labels: [], datasets: [{ label: 'Idle', data: [], borderColor: '#ffc107', fill: true, backgroundColor: 'rgba(255,193,7,0.1)' }] }, options
+    });
+    screenshotsChart = new Chart(document.getElementById('screenshotsChart'), {
+        type: 'bar', data: { labels: [], datasets: [{ label: 'Screenshots', data: [], backgroundColor: '#0dcaf0' }] }, options
+    });
+}
+
+function loadReport() {
+    const empId = document.getElementById('empSelect').value;
+    const days = document.getElementById('periodSelect').value;
+    if (!empId) return;
+
+    fetch(`/api/reports/activity/${empId}?days=${days}`)
+        .then(r => r.json())
+        .then(data => {
+            reportData = data;
+            clicksChart.data.labels = data.labels;
+            clicksChart.data.datasets[0].data = data.clicks;
+            clicksChart.update();
+
+            keysChart.data.labels = data.labels;
+            keysChart.data.datasets[0].data = data.keystrokes;
+            keysChart.update();
+
+            idleChart.data.labels = data.labels;
+            idleChart.data.datasets[0].data = data.idle_minutes;
+            idleChart.update();
+
+            document.getElementById('totalClicks').textContent = data.clicks.reduce((a, b) => a + b, 0).toLocaleString();
+            document.getElementById('totalKeys').textContent = data.keystrokes.reduce((a, b) => a + b, 0).toLocaleString();
+            document.getElementById('totalSessions').textContent = data.active_minutes.reduce((a, b) => a + b, 0);
+
+            updateTable(data);
+        });
+
+    fetch(`/api/reports/screenshots/${empId}?days=${days}`)
+        .then(r => r.json())
+        .then(data => {
+            screenshotsChart.data.labels = data.labels;
+            screenshotsChart.data.datasets[0].data = data.counts;
+            screenshotsChart.update();
+            document.getElementById('totalScreenshots').textContent = data.counts.reduce((a, b) => a + b, 0);
+        });
+}
+
+function updateTable(data) {
+    const tbody = document.getElementById('activityTable');
+    tbody.innerHTML = '';
+    for (let i = 0; i < data.labels.length; i++) {
+        tbody.innerHTML += `<tr>
+            <td>${data.labels[i]}</td>
+            <td>${data.clicks[i].toLocaleString()}</td>
+            <td>${data.keystrokes[i].toLocaleString()}</td>
+            <td>${data.idle_minutes[i]}</td>
+            <td>${data.active_minutes[i]}</td>
+            <td>-</td>
+        </tr>`;
+    }
+    if (data.labels.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No activity data found</td></tr>';
+    }
+}
+
+function exportCSV() {
+    if (!reportData) { alert('Select an employee first!'); return; }
+    let csv = 'Date,Clicks,Keystrokes,Idle Minutes,Active Minutes\n';
+    for (let i = 0; i < reportData.labels.length; i++) {
+        csv += `${reportData.labels[i]},${reportData.clicks[i]},${reportData.keystrokes[i]},${reportData.idle_minutes[i]},${reportData.active_minutes[i]}\n`;
+    }
+    downloadFile(csv, 'activity_report.csv', 'text/csv');
+}
+
+function exportPDF() {
+    alert('PDF export will be available in the next update. Use CSV for now.');
+}
+
+function downloadFile(content, filename, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+}
+
+initCharts();
+</script>
+{% endblock %}
