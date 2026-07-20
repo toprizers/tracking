@@ -5,18 +5,25 @@ const path = require('path');
 const fs = require('fs');
 const { UPLOAD_DIR, queryOne, runSql } = require('../db');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const empDir = path.join(UPLOAD_DIR, String(req.employee.id));
-    fs.mkdirSync(empDir, { recursive: true });
-    cb(null, empDir);
-  },
-  filename: (req, file, cb) => {
-    const timestamp = Date.now();
-    cb(null, `${req.employee.id}_${timestamp}_${Math.random().toString(36).slice(2, 10)}.png`);
-  }
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const key = req.body.agent_key;
+      const employee = queryOne('SELECT * FROM employees WHERE agent_key = ?', [key]);
+      if (!employee) return cb(new Error('Invalid agent key'));
+      req.employee = employee;
+      const empDir = path.join(UPLOAD_DIR, String(employee.id));
+      fs.mkdirSync(empDir, { recursive: true });
+      cb(null, empDir);
+    },
+    filename: (req, file, cb) => {
+      const timestamp = Date.now();
+      const empId = req.employee ? req.employee.id : 'unknown';
+      cb(null, `${empId}_${timestamp}_${Math.random().toString(36).slice(2, 10)}.png`);
+    }
+  }),
+  limits: { fileSize: 16 * 1024 * 1024 }
 });
-const upload = multer({ storage, limits: { fileSize: 16 * 1024 * 1024 } });
 
 function verifyAgent(key) {
   if (!key) return null;
@@ -44,8 +51,7 @@ router.post('/api/agent/heartbeat', (req, res) => {
 });
 
 router.post('/api/agent/screenshot', upload.single('screenshot'), (req, res) => {
-  const key = req.body.agent_key;
-  const employee = verifyAgent(key);
+  const employee = req.employee;
   if (!employee) return res.status(401).json({ error: 'Invalid key' });
   if (!req.file) return res.status(400).json({ error: 'No screenshot' });
 
