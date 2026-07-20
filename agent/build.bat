@@ -18,6 +18,13 @@ pyinstaller --onefile --windowed --name "EmployeeMonitor_Setup" ^
     --hidden-import=mss ^
     --hidden-import=mss.tools ^
     --hidden-import=requests ^
+    --hidden-import=tkinter ^
+    --hidden-import=_tkinter ^
+    --hidden-import=tkinter.ttk ^
+    --hidden-import=tkinter.messagebox ^
+    --collect-all tkinter ^
+    --collect-all tcl ^
+    --collect-all tk ^
     setup_gui.py
 
 echo [3/4] Building monitor_agent.exe (Background Agent)...

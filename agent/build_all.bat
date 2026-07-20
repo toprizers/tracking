@@ -38,8 +38,15 @@ pyinstaller --onefile --windowed --name "EmployeeMonitor_Setup" ^
     --hidden-import=engineio ^
     --hidden-import=engineio.async_drivers ^
     --hidden-import=socketio ^
+    --hidden-import=tkinter ^
+    --hidden-import=_tkinter ^
+    --hidden-import=tkinter.ttk ^
+    --hidden-import=tkinter.messagebox ^
     --collect-all pystray ^
     --collect-all PIL ^
+    --collect-all tkinter ^
+    --collect-all tcl ^
+    --collect-all tk ^
     setup_gui.py
 
 if %errorlevel% neq 0 (
