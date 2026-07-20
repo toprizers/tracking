@@ -129,7 +129,7 @@
                                 <img src="/uploads/{{ ss.filepath }}" class="card-img-top" style="height:100px;object-fit:cover;" alt="Screenshot">
                                 <div class="card-body p-2">
                                     <small class="fw-bold d-block text-truncate">{{ ss.employee.name }}</small>
-                                    <small class="text-muted">{{ ss.captured_at.strftime('%d %b, %H:%M') }}</small>
+                                    <small class="text-muted">{{ ss.captured_at|dateFormat('%d %b, %H:%M') }}</small>
                                 </div>
                             </div>
                         </a>
@@ -167,7 +167,7 @@
                                 </h6>
                                 <small class="text-muted">{{ alert.message }}</small>
                             </div>
-                            <small class="text-muted">{{ alert.created_at.strftime('%H:%M') }}</small>
+                            <small class="text-muted">{{ alert.created_at|dateFormat('%H:%M') }}</small>
                         </div>
                     </div>
                     {% endfor %}

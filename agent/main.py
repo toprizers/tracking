@@ -190,9 +190,12 @@ def install_autostart():
         app_name = "EmployeeMonitor"
         app_path = os.path.abspath(sys.argv[0])
 
+        is_exe = getattr(sys, 'frozen', False)
+        cmd = app_path if is_exe else f'python "{app_path}"'
+
         try:
             reg_key = winreg.OpenKey(key, subkey, 0, winreg.KEY_SET_VALUE)
-            winreg.SetValueEx(reg_key, app_name, 0, winreg.REG_SZ, f'python "{app_path}"')
+            winreg.SetValueEx(reg_key, app_name, 0, winreg.REG_SZ, cmd)
             winreg.CloseKey(reg_key)
             print("[OK] Auto-start enabled in Windows Registry")
         except Exception as e:

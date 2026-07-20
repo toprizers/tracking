@@ -119,13 +119,14 @@ class ActivityTracker:
     def test_input_devices(self):
         results = {'mouse_works': True, 'keyboard_works': True}
 
-        if HAS_PSUTIL:
-            try:
-                for proc in psutil.process_iter(['name']):
-                    proc_name = proc.info['name'].lower() if proc.info['name'] else ''
-                    if 'mouse' in proc_name or 'touchpad' in proc_name:
-                        results['mouse_works'] = True
-            except Exception:
-                pass
+        if not HAS_PYNPUT:
+            results['mouse_works'] = False
+            results['keyboard_works'] = False
+            return results
+
+        if self.mouse_listener:
+            results['mouse_works'] = self.mouse_listener.is_alive()
+        if self.keyboard_listener:
+            results['keyboard_works'] = self.keyboard_listener.is_alive()
 
         return results

@@ -45,3 +45,8 @@ installer_output/
 
 # PyInstaller
 *.manifest
+
+node_server/node_modules/
+node_server/data/
+node_server/uploads/
+node_server/*.db

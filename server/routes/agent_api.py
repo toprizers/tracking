@@ -136,34 +136,39 @@ def report_input_status():
     keyboard_works = data.get('keyboard_works', True)
 
     if not mouse_works or not keyboard_works:
-        existing = Alert.query.filter_by(
-            employee_id=employee.id,
-            alert_type='input_failure'
-        ).filter(
-            Alert.created_at >= datetime.utcnow() - timedelta(minutes=30)
-        ).first()
+        failed_devices = []
+        if not mouse_works:
+            failed_devices.append("mouse")
+        if not keyboard_works:
+            failed_devices.append("keyboard")
 
-        if not existing:
-            device = "mouse" if not mouse_works else "keyboard"
-            alert = Alert(
+        for device in failed_devices:
+            existing = Alert.query.filter_by(
                 employee_id=employee.id,
                 alert_type='input_failure',
-                message=f"{employee.name}'s {device} is not responding!",
-                severity='critical'
-            )
-            db.session.add(alert)
-            db.session.commit()
+                message=f"{employee.name}'s {device} is not responding!"
+            ).filter(
+                Alert.created_at >= datetime.utcnow() - timedelta(minutes=30)
+            ).first()
 
-            socketio.emit('new_alert', {
-                'employee_id': employee.id,
-                'employee_name': employee.name,
-                'type': 'input_failure',
-                'message': alert.message,
-                'severity': 'critical',
-                'timestamp': datetime.utcnow().isoformat()
-            })
+            if not existing:
+                alert = Alert(
+                    employee_id=employee.id,
+                    alert_type='input_failure',
+                    message=f"{employee.name}'s {device} is not responding!",
+                    severity='critical'
+                )
+                db.session.add(alert)
+                db.session.commit()
 
-            return jsonify({'status': 'alert_sent'})
+                socketio.emit('new_alert', {
+                    'employee_id': employee.id,
+                    'employee_name': employee.name,
+                    'type': 'input_failure',
+                    'message': alert.message,
+                    'severity': 'critical',
+                    'timestamp': datetime.utcnow().isoformat()
+                })
 
     return jsonify({'status': 'ok'})
 

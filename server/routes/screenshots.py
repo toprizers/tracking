@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, send_from_directory, jsonify
+from flask import Blueprint, render_template, send_from_directory, jsonify, request
 from flask_login import login_required
 from models import Screenshot, Employee
 from config import Config
@@ -9,7 +9,12 @@ screenshots_bp = Blueprint('screenshots', __name__)
 @screenshots_bp.route('/screenshots')
 @login_required
 def screenshots_page():
-    page = int(__import__('flask').request.args.get('page', 1))
+    try:
+        page = int(request.args.get('page', 1))
+        if page < 1:
+            page = 1
+    except (ValueError, TypeError):
+        page = 1
     per_page = 20
     screenshots = Screenshot.query.order_by(Screenshot.captured_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False

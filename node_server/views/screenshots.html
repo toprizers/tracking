@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Screenshots - Employee Monitor{% endblock %}
+{% block page_title %}Screenshots{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-camera"></i> All Screenshots</h5>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm w-auto" id="filterEmployee">
+                <option value="">All Employees</option>
+                {% for emp in employees %}
+                <option value="{{ emp.id }}">{{ emp.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="date" class="form-control form-control-sm w-auto" id="filterDate">
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row" id="screenshots-grid">
+            {% for screenshot in screenshots.items %}
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4 screenshot-item" data-emp-id="{{ screenshot.employee_id }}" data-date="{{ screenshot.captured_at|dateFormat('%Y-%m-%d') }}">
+                <div class="card h-100 screenshot-card">
+                    <a href="#" onclick="openLightbox('/uploads/{{ screenshot.filepath }}', '{{ screenshot.employee.name }}', '{{ screenshot.captured_at|dateFormat('%d %b %Y, %H:%M') }}'); return false;">
+                        <img src="/uploads/{{ screenshot.filepath }}" class="card-img-top" style="height:180px;object-fit:cover;" alt="Screenshot">
+                    </a>
+                    <div class="card-body p-2">
+                        <small class="fw-bold">{{ screenshot.employee.name }}</small><br>
+                        <small class="text-muted">{{ screenshot.captured_at|dateFormat('%d %b, %H:%M') }}</small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not screenshots.items %}
+            <div class="text-center py-5">
+                <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No screenshots found.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if screenshots.pages > 1 %}
+        <nav>
+            <ul class="pagination justify-content-center">
+                {% if screenshots.has_prev %}
+                <li class="page-item"><a class="page-link" href="?page={{ screenshots.prev_num }}&employee={{ request.args.get('employee', '') }}">&laquo; Previous</a></li>
+                {% endif %}
+                {% for p in screenshots.iter_pages() %}
+                {% if p %}
+                <li class="page-item {% if p == screenshots.page %}active{% endif %}">
+                    <a class="page-link" href="?page={{ p }}&employee={{ request.args.get('employee', '') }}">{{ p }}</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+                {% endfor %}
+                {% if screenshots.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ screenshots.next_num }}&employee={{ request.args.get('employee', '') }}">Next &raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="lightboxModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark">
+            <div class="modal-header border-0">
+                <div>
+                    <h6 class="text-white mb-0" id="lightboxTitle">Screenshot</h6>
+                    <small class="text-muted" id="lightboxTime"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-0">
+                <img id="lightboxImage" src="" class="img-fluid" style="max-height:75vh;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function filterScreenshots() {
+    const empId = document.getElementById('filterEmployee').value;
+    const date = document.getElementById('filterDate').value;
+    document.querySelectorAll('.screenshot-item').forEach(item => {
+        let show = true;
+        if (empId && item.dataset.empId !== empId) show = false;
+        if (date && item.dataset.date !== date) show = false;
+        item.style.display = show ? '' : 'none';
+    });
+}
+
+document.getElementById('filterEmployee').addEventListener('change', filterScreenshots);
+document.getElementById('filterDate').addEventListener('change', filterScreenshots);
+
+function openLightbox(src, name, time) {
+    document.getElementById('lightboxImage').src = src;
+    document.getElementById('lightboxTitle').textContent = name;
+    document.getElementById('lightboxTime').textContent = time;
+    new bootstrap.Modal(document.getElementById('lightboxModal')).show();
+}
+</script>
+{% endblock %}

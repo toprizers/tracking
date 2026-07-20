@@ -16,6 +16,7 @@ pyinstaller --onefile --windowed --name "EmployeeMonitor_Setup" ^
     --hidden-import=pynput ^
     --hidden-import=psutil ^
     --hidden-import=mss ^
+    --hidden-import=mss.tools ^
     --hidden-import=requests ^
     setup_gui.py
 
@@ -28,6 +29,7 @@ pyinstaller --onefile --windowed --name "MonitorAgent" ^
     --hidden-import=pynput ^
     --hidden-import=psutil ^
     --hidden-import=mss ^
+    --hidden-import=mss.tools ^
     --hidden-import=requests ^
     main.py
 

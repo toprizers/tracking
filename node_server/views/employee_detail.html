@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}{{ employee.name }} - Employee Monitor{% endblock %}
+{% block page_title %}{{ employee.name }}'s Profile{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width:80px;height:80px;font-size:2rem;">
+                    {{ employee.name[0] }}
+                </div>
+                <h4>{{ employee.name }}</h4>
+                <p class="text-muted">{{ employee.email }}</p>
+                <p><strong>Department:</strong> {{ employee.department or 'N/A' }}</p>
+                <p>
+                    Status:
+                    {% if employee.status == 'active' %}
+                    <span class="badge bg-success">Active</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Offline</span>
+                    {% endif %}
+                </p>
+                <p>
+                    Consent:
+                    {% if employee.consent_given %}
+                    <span class="badge bg-success">Given</span>
+                    {% else %}
+                    <span class="badge bg-warning">Pending</span>
+                    {% endif %}
+                </p>
+                <hr>
+                <div class="text-start">
+                    <small class="text-muted d-block mb-2"><strong>Agent Key:</strong></small>
+                    <div class="input-group input-group-sm mb-3">
+                        <input type="text" class="form-control font-monospace" value="{{ employee.agent_key }}" readonly id="agentKeyField">
+                        <button class="btn btn-outline-primary" onclick="copyKey()"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="fas fa-edit"></i> Edit Profile
+                    </button>
+                    <form method="POST" action="/api/employees/{{ employee.id }}/regenerate-key">
+                        <button type="submit" class="btn btn-outline-info btn-sm w-100" onclick="return confirm('Regenerate agent key? You will need to update the agent config.')">
+                            <i class="fas fa-key"></i> Regenerate Key
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#screenshots">
+                    <i class="fas fa-camera"></i> Screenshots ({{ screenshots|length }})
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#activity">
+                    <i class="fas fa-mouse-pointer"></i> Activity ({{ activities|length }})
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#alerts">
+                    <i class="fas fa-bell"></i> Alerts ({{ alerts|length }})
+                </a>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="screenshots">
+                <div class="row">
+                    {% for screenshot in screenshots %}
+                    <div class="col-md-4 col-sm-6 mb-3">
+                        <div class="card screenshot-card">
+                            <a href="#" onclick="openLightbox('/uploads/{{ screenshot.filepath }}', '{{ employee.name }}', '{{ screenshot.captured_at|dateFormat('%d %b %Y, %H:%M') }}'); return false;">
+                                <img src="/uploads/{{ screenshot.filepath }}" class="card-img-top" style="height:150px;object-fit:cover;" alt="Screenshot">
+                            </a>
+                            <div class="card-body p-2">
+                                <small class="text-muted">{{ screenshot.captured_at|dateFormat('%d %b, %H:%M') }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if not screenshots %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-camera fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">No screenshots yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="activity">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Type</th>
+                                <th>Mouse</th>
+                                <th>Keys</th>
+                                <th>Idle</th>
+                                <th>Window</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for act in activities %}
+                            <tr>
+                                <td>{{ act.recorded_at|dateFormat('%d %b, %H:%M') }}</td>
+                                <td><span class="badge bg-info">{{ act.activity_type }}</span></td>
+                                <td>{{ act.mouse_clicks }} clicks</td>
+                                <td>{{ act.keystrokes }} keys</td>
+                                <td>
+                                    {% if act.idle_time > 600 %}
+                                    <span class="text-danger">{{ act.idle_time // 60 }}m</span>
+                                    {% else %}
+                                    {{ act.idle_time // 60 }}m
+                                    {% endif %}
+                                </td>
+                                <td class="text-truncate" style="max-width:200px;">{{ act.active_window or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% if not activities %}
+                            <tr><td colspan="6" class="text-center text-muted">No activity data yet.</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="alerts">
+                <div class="list-group">
+                    {% for alert in alerts %}
+                    <div class="list-group-item {% if alert.severity == 'critical' %}list-group-item-danger{% elif alert.severity == 'warning' %}list-group-item-warning{% endif %}">
+                        <div class="d-flex justify-content-between">
+                            <strong>
+                                {% if alert.alert_type == 'idle' %}
+                                <i class="fas fa-clock text-warning"></i>
+                                {% elif alert.alert_type == 'input_failure' %}
+                                <i class="fas fa-mouse text-danger"></i>
+                                {% else %}
+                                <i class="fas fa-info-circle text-info"></i>
+                                {% endif %}
+                                {{ alert.alert_type|replace('_', ' ')|title }}
+                            </strong>
+                            <small>{{ alert.created_at|dateFormat('%d %b, %H:%M') }}</small>
+                        </div>
+                        <p class="mb-0">{{ alert.message }}</p>
+                    </div>
+                    {% endfor %}
+                    {% if not alerts %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                        <p class="text-muted">No alerts for this employee.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit {{ employee.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/api/employees/{{ employee.id }}/edit">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" name="name" value="{{ employee.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email" value="{{ employee.email }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Department</label>
+                        <input type="text" class="form-control" name="department" value="{{ employee.department or '' }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="lightboxModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark">
+            <div class="modal-header border-0">
+                <div>
+                    <h6 class="text-white mb-0" id="lightboxTitle">Screenshot</h6>
+                    <small class="text-muted" id="lightboxTime"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-0">
+                <img id="lightboxImage" src="" class="img-fluid" style="max-height:75vh;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyKey() {
+    const field = document.getElementById('agentKeyField');
+    navigator.clipboard.writeText(field.value);
+    alert('Agent key copied!');
+}
+
+function openLightbox(src, name, time) {
+    document.getElementById('lightboxImage').src = src;
+    document.getElementById('lightboxTitle').textContent = name;
+    document.getElementById('lightboxTime').textContent = time;
+    new bootstrap.Modal(document.getElementById('lightboxModal')).show();
+}
+</script>
+{% endblock %}
