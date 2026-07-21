@@ -73,3 +73,20 @@ class ScreenCapture:
                 file_age = now - os.path.getmtime(filepath)
                 if file_age > max_age_hours * 3600:
                     os.remove(filepath)
+
+    def take_screenshot_bytes(self):
+        import io
+        if HAS_MSS:
+            with mss.mss() as sct:
+                monitor = sct.monitors[1]
+                screenshot = sct.grab(monitor)
+                png = mss.tools.to_png(screenshot.rgb, screenshot.size)
+                return io.BytesIO(png)
+        elif HAS_PIL:
+            from PIL import ImageGrab
+            img = ImageGrab.grab()
+            buf = io.BytesIO()
+            img.save(buf, format='PNG', optimize=True)
+            buf.seek(0)
+            return buf
+        return None

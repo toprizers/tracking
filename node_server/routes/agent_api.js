@@ -138,4 +138,24 @@ router.post('/api/agent/status', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+const liveScreenUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
+
+router.post('/api/agent/live-screen', liveScreenUpload.single('screenshot'), (req, res) => {
+  const key = req.body.agent_key;
+  const employee = verifyAgent(key);
+  if (!employee) return res.status(401).json({ error: 'Invalid key' });
+  if (!req.file) return res.status(400).json({ error: 'No screenshot' });
+
+  const b64 = req.file.buffer.toString('base64');
+  const io = req.app.get('io');
+  io.emit('live_screen', {
+    employee_id: employee.id,
+    employee_name: employee.name,
+    image: b64,
+    timestamp: new Date().toISOString()
+  });
+
+  res.json({ status: 'ok' });
+});
+
 module.exports = router;

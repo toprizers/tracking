@@ -5,6 +5,39 @@
 
 {% block content %}
 <div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-tv"></i> Live Screen</h5>
+                <div>
+                    <select id="liveEmployeeSelect" class="form-select form-select-sm" style="width:auto;display:inline-block;" onchange="switchLiveEmployee(this.value)">
+                        <option value="">Select Employee</option>
+                        {% for emp in employees %}
+                        {% if emp.status == 'active' %}
+                        <option value="{{ emp.id }}">{{ emp.name }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                    <span class="badge bg-success ms-2" id="liveStatus" style="display:none;">
+                        <i class="fas fa-circle fa-pulse"></i> LIVE
+                    </span>
+                </div>
+            </div>
+            <div class="card-body text-center" style="min-height:300px;background:#1a1a2e;">
+                <div id="liveScreenPlaceholder">
+                    <i class="fas fa-desktop fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Select an active employee to view live screen</p>
+                </div>
+                <img id="liveScreenImage" src="" style="display:none;max-width:100%;max-height:500px;border-radius:8px;" alt="Live Screen">
+                <div id="liveScreenInfo" style="display:none;" class="mt-2">
+                    <small class="text-muted" id="liveScreenTime"></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
     <div class="col-md-3">
         <div class="card bg-primary text-white">
             <div class="card-body">
@@ -189,7 +222,44 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 <script>
+const socket = io();
+let selectedEmployeeId = null;
+
+function switchLiveEmployee(empId) {
+    selectedEmployeeId = empId ? parseInt(empId) : null;
+    if (selectedEmployeeId) {
+        document.getElementById('liveScreenPlaceholder').style.display = 'none';
+        document.getElementById('liveScreenImage').style.display = 'inline-block';
+        document.getElementById('liveScreenInfo').style.display = 'block';
+        document.getElementById('liveStatus').style.display = 'inline-block';
+    } else {
+        document.getElementById('liveScreenPlaceholder').style.display = 'block';
+        document.getElementById('liveScreenImage').style.display = 'none';
+        document.getElementById('liveScreenInfo').style.display = 'none';
+        document.getElementById('liveStatus').style.display = 'none';
+    }
+}
+
+socket.on('live_screen', function(data) {
+    if (selectedEmployeeId && data.employee_id === selectedEmployeeId) {
+        const img = document.getElementById('liveScreenImage');
+        img.src = 'data:image/png;base64,' + data.image;
+        const t = new Date(data.timestamp);
+        document.getElementById('liveScreenTime').textContent =
+            'Last update: ' + t.toLocaleTimeString() + ' | ' + data.employee_name;
+    }
+});
+
+socket.on('agent_heartbeat', function(data) {
+    const row = document.querySelector('[data-employee-id="' + data.employee_id + '"]');
+    if (row) {
+        const lastActive = row.querySelector('.last-active');
+        if (lastActive) lastActive.textContent = 'Just now';
+    }
+});
+
 function refreshDashboard() {
     fetch('/api/dashboard-data')
         .then(r => r.json())

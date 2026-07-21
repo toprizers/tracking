@@ -96,6 +96,20 @@ class ServerUploader:
             print(f"[ERROR] Status report failed: {e}")
             return False
 
+    def upload_live_screen(self, screenshot_bytes):
+        try:
+            files = {'screenshot': ('live.png', screenshot_bytes, 'image/png')}
+            data = {'agent_key': self.agent_key}
+            resp = self.session.post(
+                self._url('/api/agent/live-screen'),
+                files=files,
+                data=data,
+                timeout=10
+            )
+            return resp.status_code == 200
+        except requests.RequestException:
+            return False
+
     def test_connection(self):
         try:
             resp = self.session.post(

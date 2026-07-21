@@ -42,6 +42,7 @@ class MonitorAgent:
         self.start_time = datetime.now()
         self.last_screenshot_time = None
         self.tray = None
+        self.live_screen_enabled = True
 
     def load_config(self, path):
         with open(path, 'r') as f:
@@ -98,6 +99,13 @@ class MonitorAgent:
             keyboard_works=results['keyboard_works']
         )
 
+    def capture_live_screen(self):
+        if self.paused or not self.live_screen_enabled:
+            return
+        buf = self.capture.take_screenshot_bytes()
+        if buf:
+            self.uploader.upload_live_screen(buf.getvalue())
+
     def take_screenshot_now(self):
         logger.info("Manual screenshot triggered")
         self.capture_and_upload()
@@ -135,13 +143,16 @@ class MonitorAgent:
         activity_interval = self.config.get('activity_check_interval', 60)
         input_interval = self.config.get('input_test_interval', 300)
         heartbeat_interval = 60
+        live_screen_interval = 5
 
         last_screenshot = 0
         last_activity = 0
         last_input_check = 0
         last_heartbeat = 0
+        last_live_screen = 0
 
         logger.info(f"Agent started! Screenshot every {screenshot_interval}s, "
+                    f"Live screen every {live_screen_interval}s, "
                     f"Activity check every {activity_interval}s")
 
         try:
@@ -167,6 +178,10 @@ class MonitorAgent:
                 if now - last_input_check >= input_interval:
                     self.check_input_devices()
                     last_input_check = now
+
+                if now - last_live_screen >= live_screen_interval:
+                    self.capture_live_screen()
+                    last_live_screen = now
 
                 time.sleep(1)
 
