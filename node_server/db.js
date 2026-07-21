@@ -106,6 +106,14 @@ async function initDatabase() {
     console.log('[OK] Default admin created -> admin / admin123');
   }
 
+  const empResult = db.exec('SELECT id FROM employees WHERE id = 1');
+  if (!empResult.length || empResult[0].values.length === 0) {
+    const agentKey = '04e4a5a877253f6f1301aec1075951025edf8c8768ee84ff0eed50629f5d85ac';
+    db.run('INSERT INTO employees (name, email, department, agent_key, consent_given, consent_date) VALUES (?, ?, ?, ?, 1, datetime("now"))',
+      ['Demo', 'demo@example.com', 'General', agentKey]);
+    console.log('[OK] Default employee created -> Demo / agent_key: ' + agentKey);
+  }
+
   saveDatabase();
   console.log('[OK] Database initialized');
 }

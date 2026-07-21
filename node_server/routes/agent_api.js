@@ -5,25 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { UPLOAD_DIR, queryOne, runSql } = require('../db');
 
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      const key = req.body.agent_key;
-      const employee = queryOne('SELECT * FROM employees WHERE agent_key = ?', [key]);
-      if (!employee) return cb(new Error('Invalid agent key'));
-      req.employee = employee;
-      const empDir = path.join(UPLOAD_DIR, String(employee.id));
-      fs.mkdirSync(empDir, { recursive: true });
-      cb(null, empDir);
-    },
-    filename: (req, file, cb) => {
-      const timestamp = Date.now();
-      const empId = req.employee ? req.employee.id : 'unknown';
-      cb(null, `${empId}_${timestamp}_${Math.random().toString(36).slice(2, 10)}.png`);
-    }
-  }),
-  limits: { fileSize: 16 * 1024 * 1024 }
-});
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 16 * 1024 * 1024 } });
 
 function verifyAgent(key) {
   if (!key) return null;
@@ -51,23 +33,30 @@ router.post('/api/agent/heartbeat', (req, res) => {
 });
 
 router.post('/api/agent/screenshot', upload.single('screenshot'), (req, res) => {
-  const employee = req.employee;
+  const key = req.body.agent_key;
+  const employee = verifyAgent(key);
   if (!employee) return res.status(401).json({ error: 'Invalid key' });
   if (!req.file) return res.status(400).json({ error: 'No screenshot' });
 
-  const filepath = `${employee.id}/${req.file.filename}`;
-  runSql('INSERT INTO screenshots (employee_id, filename, filepath, captured_at) VALUES (?, ?, ?, datetime("now"))', [employee.id, req.file.filename, filepath]);
+  const empDir = path.join(UPLOAD_DIR, String(employee.id));
+  fs.mkdirSync(empDir, { recursive: true });
+  const filename = `${employee.id}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.png`;
+  const filepath = path.join(empDir, filename);
+  fs.writeFileSync(filepath, req.file.buffer);
+
+  const relPath = `${employee.id}/${filename}`;
+  runSql('INSERT INTO screenshots (employee_id, filename, filepath, captured_at) VALUES (?, ?, ?, datetime("now"))', [employee.id, filename, relPath]);
 
   const io = req.app.get('io');
   io.emit('new_screenshot', {
     employee_id: employee.id,
     employee_name: employee.name,
-    filename: req.file.filename,
-    filepath,
+    filename,
+    filepath: relPath,
     timestamp: new Date().toISOString()
   });
 
-  res.json({ status: 'ok', filename: req.file.filename });
+  res.json({ status: 'ok', filename });
 });
 
 router.post('/api/agent/activity', (req, res) => {
@@ -138,9 +127,7 @@ router.post('/api/agent/status', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-const liveScreenUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
-
-router.post('/api/agent/live-screen', liveScreenUpload.single('screenshot'), (req, res) => {
+router.post('/api/agent/live-screen', upload.single('screenshot'), (req, res) => {
   const key = req.body.agent_key;
   const employee = verifyAgent(key);
   if (!employee) return res.status(401).json({ error: 'Invalid key' });
