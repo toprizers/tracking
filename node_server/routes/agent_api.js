@@ -5,7 +5,10 @@ const path = require('path');
 const fs = require('fs');
 const { UPLOAD_DIR, queryOne, runSql } = require('../db');
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 16 * 1024 * 1024 } });
+const upload = multer({
+  dest: path.join(__dirname, '..', 'uploads', 'tmp'),
+  limits: { fileSize: 16 * 1024 * 1024 }
+});
 
 function verifyAgent(key) {
   if (!key) return null;
@@ -38,25 +41,31 @@ router.post('/api/agent/screenshot', upload.single('screenshot'), (req, res) => 
   if (!employee) return res.status(401).json({ error: 'Invalid key' });
   if (!req.file) return res.status(400).json({ error: 'No screenshot' });
 
-  const empDir = path.join(UPLOAD_DIR, String(employee.id));
-  fs.mkdirSync(empDir, { recursive: true });
-  const filename = `${employee.id}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.png`;
-  const filepath = path.join(empDir, filename);
-  fs.writeFileSync(filepath, req.file.buffer);
+  try {
+    const empDir = path.join(UPLOAD_DIR, String(employee.id));
+    fs.mkdirSync(empDir, { recursive: true });
+    const filename = `${employee.id}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.png`;
+    const filepath = path.join(empDir, filename);
+    fs.renameSync(req.file.path, filepath);
 
-  const relPath = `${employee.id}/${filename}`;
-  runSql('INSERT INTO screenshots (employee_id, filename, filepath, captured_at) VALUES (?, ?, ?, datetime("now"))', [employee.id, filename, relPath]);
+    const relPath = `${employee.id}/${filename}`;
+    runSql('INSERT INTO screenshots (employee_id, filename, filepath, captured_at) VALUES (?, ?, ?, datetime("now"))', [employee.id, filename, relPath]);
 
-  const io = req.app.get('io');
-  io.emit('new_screenshot', {
-    employee_id: employee.id,
-    employee_name: employee.name,
-    filename,
-    filepath: relPath,
-    timestamp: new Date().toISOString()
-  });
+    const io = req.app.get('io');
+    io.emit('new_screenshot', {
+      employee_id: employee.id,
+      employee_name: employee.name,
+      filename,
+      filepath: relPath,
+      timestamp: new Date().toISOString()
+    });
 
-  res.json({ status: 'ok', filename });
+    res.json({ status: 'ok', filename });
+  } catch (err) {
+    console.error('Screenshot save error:', err);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: 'Save failed' });
+  }
 });
 
 router.post('/api/agent/activity', (req, res) => {
@@ -133,16 +142,23 @@ router.post('/api/agent/live-screen', upload.single('screenshot'), (req, res) =>
   if (!employee) return res.status(401).json({ error: 'Invalid key' });
   if (!req.file) return res.status(400).json({ error: 'No screenshot' });
 
-  const b64 = req.file.buffer.toString('base64');
-  const io = req.app.get('io');
-  io.emit('live_screen', {
-    employee_id: employee.id,
-    employee_name: employee.name,
-    image: b64,
-    timestamp: new Date().toISOString()
-  });
-
-  res.json({ status: 'ok' });
+  try {
+    const buffer = fs.readFileSync(req.file.path);
+    fs.unlinkSync(req.file.path);
+    const b64 = buffer.toString('base64');
+    const io = req.app.get('io');
+    io.emit('live_screen', {
+      employee_id: employee.id,
+      employee_name: employee.name,
+      image: b64,
+      timestamp: new Date().toISOString()
+    });
+    res.json({ status: 'ok' });
+  } catch (err) {
+    console.error('Live screen error:', err);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: 'Failed' });
+  }
 });
 
 module.exports = router;

@@ -8,6 +8,7 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(path.join(UPLOAD_DIR, 'tmp'), { recursive: true });
 
 const DB_PATH = path.join(DATA_DIR, 'employee_monitor.db');
 
