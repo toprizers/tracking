@@ -7,13 +7,19 @@ import subprocess
 import threading
 
 
+def get_persistent_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 class SetupGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Employee Monitor - Setup")
         self.root.geometry("500x400")
         self.root.resizable(False, False)
-        self.config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+        self.config_path = os.path.join(get_persistent_dir(), 'config.json')
         self.create_widgets()
         self.load_existing_config()
 
@@ -33,7 +39,7 @@ class SetupGUI:
         tk.Label(form, text="Server URL:", font=("Segoe UI", 10, "bold"), anchor="w").pack(fill="x")
         self.server_entry = tk.Entry(form, font=("Segoe UI", 11), width=50)
         self.server_entry.pack(pady=(0, 10), ipady=4)
-        self.server_entry.insert(0, "http://")
+        self.server_entry.insert(0, "https://demo.kazzona.com")
 
         tk.Label(form, text="Agent Key:", font=("Segoe UI", 10, "bold"), anchor="w").pack(fill="x")
         self.key_entry = tk.Entry(form, font=("Segoe UI", 11), width=50)
@@ -64,7 +70,7 @@ class SetupGUI:
             with open(self.config_path, 'r') as f:
                 config = json.load(f)
             self.server_entry.delete(0, tk.END)
-            self.server_entry.insert(0, config.get('server_url', 'http://'))
+            self.server_entry.insert(0, config.get('server_url', 'https://demo.kazzona.com'))
             self.key_entry.delete(0, tk.END)
             self.key_entry.insert(0, config.get('agent_key', ''))
 
@@ -123,9 +129,14 @@ class SetupGUI:
 
         def start_agent():
             try:
-                main_py = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'main.py')
-                subprocess.Popen([sys.executable, main_py],
-                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+                if getattr(sys, 'frozen', False):
+                    exe_path = sys.executable
+                    subprocess.Popen([exe_path],
+                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+                else:
+                    main_py = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'main.py')
+                    subprocess.Popen([sys.executable, main_py],
+                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
                 self.root.after(1000, lambda: messagebox.showinfo("Success",
                     "Agent started successfully!\n\nYou can close this window.\nAgent is running in background."))
                 self.root.after(1500, self.root.destroy)

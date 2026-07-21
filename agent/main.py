@@ -7,10 +7,6 @@ import logging
 import threading
 from datetime import datetime
 
-from capture import ScreenCapture
-from activity import ActivityTracker
-from uploader import ServerUploader
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -22,8 +18,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def get_persistent_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def get_bundled_config_path():
+    if getattr(sys, 'frozen', False):
+        return os.path.join(sys._MEIPASS, 'config.json')
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+
+
+def get_persistent_config_path():
+    return os.path.join(get_persistent_dir(), 'config.json')
+
+
 class MonitorAgent:
-    def __init__(self, config_path='config.json'):
+    def __init__(self, config_path):
+        from capture import ScreenCapture
+        from activity import ActivityTracker
+        from uploader import ServerUploader
+
         self.running = False
         self.paused = False
         self.config = self.load_config(config_path)
@@ -49,7 +65,7 @@ class MonitorAgent:
             return json.load(f)
 
     def setup_dirs(self):
-        base = os.path.dirname(os.path.abspath(__file__))
+        base = get_persistent_dir()
         self.screenshot_dir = os.path.join(base, 'screenshots')
         os.makedirs(self.screenshot_dir, exist_ok=True)
 
@@ -240,14 +256,19 @@ def main():
         install_autostart()
         return
 
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+    persistent_config = get_persistent_config_path()
+    bundled_config = get_bundled_config_path()
 
-    if not os.path.exists(config_path):
+    if os.path.exists(persistent_config):
+        agent = MonitorAgent(persistent_config)
+    elif os.path.exists(bundled_config):
+        import shutil
+        shutil.copy2(bundled_config, persistent_config)
+        agent = MonitorAgent(persistent_config)
+    else:
         print("ERROR: config.json not found!")
         print("Please configure server_url and agent_key in config.json")
         return
-
-    agent = MonitorAgent(config_path)
 
     def signal_handler(sig, frame):
         agent.stop()
@@ -255,22 +276,6 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-
-    use_tray = '--tray' in sys.argv
-
-    if use_tray:
-        try:
-            from tray import SystemTray
-            tray = SystemTray(agent_callback=agent)
-            agent.tray = tray
-
-            tray_thread = threading.Thread(target=tray.start, daemon=True)
-            tray_thread.start()
-
-            logger.info("System tray icon enabled")
-        except ImportError:
-            logger.warning("pystray not installed. Running without tray icon.")
-            logger.warning("Install with: pip install pystray")
 
     agent.run()
 
