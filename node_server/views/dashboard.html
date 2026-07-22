@@ -94,7 +94,7 @@
 
 <div class="row">
     <div class="col-md-8">
-        {% if grouped_employees.get('hr') %}
+        {% if grouped_employees['hr'] %}
         <div class="card mb-3 border-danger">
             <div class="card-header bg-danger text-white">
                 <h6 class="mb-0"><i class="fas fa-user-tie"></i> HR Team</h6>
@@ -121,7 +121,7 @@
         </div>
         {% endif %}
 
-        {% if grouped_employees.get('tl') %}
+        {% if grouped_employees['tl'] %}
         <div class="card mb-3 border-warning">
             <div class="card-header bg-warning text-dark">
                 <h6 class="mb-0"><i class="fas fa-user-cog"></i> Team Leads</h6>
@@ -148,7 +148,7 @@
         </div>
         {% endif %}
 
-        {% if grouped_employees.get('manager') %}
+        {% if grouped_employees['manager'] %}
         <div class="card mb-3 border-info">
             <div class="card-header bg-info text-white">
                 <h6 class="mb-0"><i class="fas fa-user-shield"></i> Managers</h6>
@@ -202,7 +202,7 @@
         </div>
         {% endfor %}
 
-        {% if grouped_employees.get('employee') %}
+        {% if grouped_employees['employee'] %}
         <div class="card mb-3">
             <div class="card-header">
                 <h6 class="mb-0"><i class="fas fa-users"></i> Employees</h6>

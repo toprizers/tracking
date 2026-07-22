@@ -5,3 +5,7 @@ test_*.png
 *.html
 !node_server/views/*.html
 installer_output/
+node_modules/
+__pycache__/
+server/instance/
+server/uploads/
