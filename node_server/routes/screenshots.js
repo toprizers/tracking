@@ -7,6 +7,7 @@ router.get('/screenshots', requireLogin, (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const perPage = 20;
   const offset = (page - 1) * perPage;
+  const currentEmployee = req.query.employee || '';
 
   const screenshots = queryAll(`
     SELECT s.*, e.name as employee_name FROM screenshots s
@@ -27,6 +28,7 @@ router.get('/screenshots', requireLogin, (req, res) => {
       has_next: page < totalPages,
       prev_num: page - 1,
       next_num: page + 1,
+      current_employee: currentEmployee,
       iter_pages: () => {
         const pages = [];
         for (let i = 1; i <= totalPages; i++) pages.push(i);

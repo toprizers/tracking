@@ -44,19 +44,19 @@
         <nav>
             <ul class="pagination justify-content-center">
                 {% if screenshots.has_prev %}
-                <li class="page-item"><a class="page-link" href="?page={{ screenshots.prev_num }}&employee={{ request.args.get('employee', '') }}">&laquo; Previous</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ screenshots.prev_num }}&employee={{ screenshots.current_employee }}">&laquo; Previous</a></li>
                 {% endif %}
                 {% for p in screenshots.iter_pages() %}
                 {% if p %}
                 <li class="page-item {% if p == screenshots.page %}active{% endif %}">
-                    <a class="page-link" href="?page={{ p }}&employee={{ request.args.get('employee', '') }}">{{ p }}</a>
+                    <a class="page-link" href="?page={{ p }}&employee={{ screenshots.current_employee }}">{{ p }}</a>
                 </li>
                 {% else %}
                 <li class="page-item disabled"><span class="page-link">...</span></li>
                 {% endif %}
                 {% endfor %}
                 {% if screenshots.has_next %}
-                <li class="page-item"><a class="page-link" href="?page={{ screenshots.next_num }}&employee={{ request.args.get('employee', '') }}">Next &raquo;</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ screenshots.next_num }}&employee={{ screenshots.current_employee }}">Next &raquo;</a></li>
                 {% endif %}
             </ul>
         </nav>
