@@ -5,42 +5,51 @@ const { queryAll, queryOne, runSql } = require('../db');
 const { requireLogin } = require('../middleware/auth');
 
 router.get('/', requireLogin, (req, res) => {
-  const employees = queryAll('SELECT * FROM employees ORDER BY id');
-  const totalAlerts = queryOne('SELECT COUNT(*) as count FROM alerts WHERE is_read = 0').count;
-  const latestScreenshots = queryAll(`
-    SELECT s.*, e.name as employee_name, e.emp_id, e.department, e.designation FROM screenshots s
-    JOIN employees e ON s.employee_id = e.id
-    ORDER BY s.captured_at DESC LIMIT 8
-  `);
+  try {
+    const employees = queryAll('SELECT * FROM employees ORDER BY id');
+    let totalAlerts = 0;
+    try { totalAlerts = queryOne('SELECT COUNT(*) as count FROM alerts WHERE is_read = 0').count || 0; } catch(e) {}
+    const latestScreenshots = queryAll(`
+      SELECT s.*, e.name as employee_name, e.emp_id, e.department, e.designation FROM screenshots s
+      JOIN employees e ON s.employee_id = e.id
+      ORDER BY s.captured_at DESC LIMIT 8
+    `);
 
-  const recentAlerts = queryAll(`
-    SELECT a.*, e.name as employee_name, e.emp_id, e.department FROM alerts a
-    JOIN employees e ON a.employee_id = e.id
-    WHERE a.is_read = 0
-    ORDER BY a.created_at DESC LIMIT 10
-  `);
+    let recentAlerts = [];
+    try {
+      recentAlerts = queryAll(`
+        SELECT a.*, e.name as employee_name, e.emp_id, e.department FROM alerts a
+        JOIN employees e ON a.employee_id = e.id
+        WHERE a.is_read = 0
+        ORDER BY a.created_at DESC LIMIT 10
+      `);
+    } catch(e) {}
 
-  const activeCount = employees.filter(e => e.status === 'active').length;
+    const activeCount = employees.filter(e => e.status === 'active').length;
 
-  const grouped = {};
-  employees.forEach(emp => {
-    const role = emp.role || 'employee';
-    if (!grouped[role]) grouped[role] = [];
-    grouped[role].push(emp);
-  });
+    const grouped = {};
+    employees.forEach(emp => {
+      const role = emp.role || 'employee';
+      if (!grouped[role]) grouped[role] = [];
+      grouped[role].push(emp);
+    });
 
-  res.render('dashboard.html', {
-    employees,
-    grouped_employees: grouped,
-    total_employees: employees.length,
-    active_employees: activeCount,
-    total_alerts: totalAlerts,
-    recent_alerts: recentAlerts,
-    latest_screenshots: latestScreenshots.map(s => ({
-      ...s,
-      employee: { name: s.employee_name, emp_id: s.emp_id, department: s.department, designation: s.designation }
-    }))
-  });
+    res.render('dashboard.html', {
+      employees,
+      grouped_employees: grouped,
+      total_employees: employees.length,
+      active_employees: activeCount,
+      total_alerts: totalAlerts,
+      recent_alerts: recentAlerts,
+      latest_screenshots: latestScreenshots.map(s => ({
+        ...s,
+        employee: { name: s.employee_name, emp_id: s.emp_id, department: s.department, designation: s.designation }
+      }))
+    });
+  } catch(err) {
+    console.error('[DASHBOARD ERROR]', err);
+    res.status(500).send('Dashboard Error: ' + err.message);
+  }
 });
 
 router.get('/employees', requireLogin, (req, res) => {
