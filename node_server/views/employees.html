@@ -13,25 +13,26 @@
     </div>
     <div class="card-body">
         <div class="mb-3">
-            <input type="text" class="form-control" id="searchInput" placeholder="Search employees..." onkeyup="filterTable()">
+            <input type="text" class="form-control" id="searchInput" placeholder="Search by name, ID, department..." onkeyup="filterTable()">
         </div>
         <div class="table-responsive">
             <table class="table table-hover" id="employeeTable">
                 <thead>
                     <tr>
-                        <th>#</th>
+                        <th>Emp ID</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Department</th>
+                        <th>Designation</th>
+                        <th>Role</th>
                         <th>Status</th>
-                        <th>Consent</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for emp in employees %}
                     <tr>
-                        <td>{{ emp.id }}</td>
+                        <td><strong>{{ emp.emp_id or 'N/A' }}</strong></td>
                         <td>
                             <div class="d-flex align-items-center">
                                 <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:35px;height:35px;">
@@ -42,18 +43,13 @@
                         </td>
                         <td>{{ emp.email }}</td>
                         <td>{{ emp.department or '-' }}</td>
+                        <td>{{ emp.designation or '-' }}</td>
+                        <td><span class="badge bg-info">{{ emp.role|title }}</span></td>
                         <td>
                             {% if emp.status == 'active' %}
                             <span class="badge bg-success">Active</span>
                             {% else %}
                             <span class="badge bg-secondary">Offline</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if emp.consent_given %}
-                            <span class="badge bg-success"><i class="fas fa-check"></i> Given</span>
-                            {% else %}
-                            <span class="badge bg-warning"><i class="fas fa-clock"></i> Pending</span>
                             {% endif %}
                         </td>
                         <td>
@@ -64,43 +60,9 @@
                                 <button class="btn btn-outline-info" title="Copy Agent Key" onclick="copyKey('{{ emp.agent_key }}')">
                                     <i class="fas fa-copy"></i>
                                 </button>
-                                <button class="btn btn-outline-warning" title="Edit" data-bs-toggle="modal" data-bs-target="#editModal{{ emp.id }}">
-                                    <i class="fas fa-edit"></i>
-                                </button>
                                 <button class="btn btn-outline-danger" title="Delete" onclick="confirmDelete({{ emp.id }}, '{{ emp.name }}')">
                                     <i class="fas fa-trash"></i>
                                 </button>
-                            </div>
-
-                            <div class="modal fade" id="editModal{{ emp.id }}" tabindex="-1">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title">Edit {{ emp.name }}</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <form method="POST" action="/api/employees/{{ emp.id }}/edit">
-                                            <div class="modal-body">
-                                                <div class="mb-3">
-                                                    <label class="form-label">Name</label>
-                                                    <input type="text" class="form-control" name="name" value="{{ emp.name }}" required>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Email</label>
-                                                    <input type="email" class="form-control" name="email" value="{{ emp.email }}" required>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Department</label>
-                                                    <input type="text" class="form-control" name="department" value="{{ emp.department or '' }}">
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
                             </div>
                         </td>
                     </tr>
@@ -112,7 +74,7 @@
 </div>
 
 <div class="modal fade" id="addEmployeeModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-user-plus"></i> Add New Employee</h5>
@@ -120,20 +82,72 @@
             </div>
             <form method="POST" action="/api/employees/add">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Full Name *</label>
-                        <input type="text" class="form-control" name="name" required placeholder="e.g. Rahul Kumar">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Employee ID</label>
+                            <input type="text" class="form-control" name="emp_id" placeholder="e.g. EMP001 (auto-generated if empty)">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" class="form-control" name="name" required placeholder="e.g. Rahul Kumar">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email *</label>
-                        <input type="email" class="form-control" name="email" required placeholder="e.g. rahul@company.com">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email *</label>
+                            <input type="email" class="form-control" name="email" required placeholder="e.g. rahul@company.com">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Department</label>
+                            <input type="text" class="form-control" name="department" placeholder="e.g. IT, HR, Sales, Marketing">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Department</label>
-                        <input type="text" class="form-control" name="department" placeholder="e.g. IT, HR, Sales">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Designation</label>
+                            <input type="text" class="form-control" name="designation" placeholder="e.g. Developer, Executive">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Role</label>
+                            <select class="form-select" name="role">
+                                <option value="employee">Employee</option>
+                                <option value="tl">Team Lead</option>
+                                <option value="manager">Manager</option>
+                                <option value="hr">HR</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Reports To</label>
+                            <select class="form-select" name="reports_to">
+                                <option value="">None</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.role }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Work Start</label>
+                            <input type="time" class="form-control" name="work_start" value="09:00">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Work End</label>
+                            <input type="time" class="form-control" name="work_end" value="18:00">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Break Start (optional)</label>
+                            <input type="time" class="form-control" name="break_start">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Break End (optional)</label>
+                            <input type="time" class="form-control" name="break_end">
+                        </div>
                     </div>
                     <div class="alert alert-info mb-0">
-                        <small><i class="fas fa-info-circle"></i> After adding, go to employee profile to get the Agent Key for installation.</small>
+                        <small><i class="fas fa-info-circle"></i> Agent Key will be auto-generated. Copy it from employee profile after adding.</small>
                     </div>
                 </div>
                 <div class="modal-footer">

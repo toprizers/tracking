@@ -18,6 +18,52 @@ function verifyAgent(key) {
   return employee;
 }
 
+function isBreakTime(employee) {
+  if (!employee.break_start || !employee.break_end) return false;
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const currentTime = `${hours}:${minutes}`;
+  return currentTime >= employee.break_start && currentTime <= employee.break_end;
+}
+
+function isWorkingHours(employee) {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const currentTime = `${hours}:${minutes}`;
+  const start = employee.work_start || '09:00';
+  const end = employee.work_end || '18:00';
+  return currentTime >= start && currentTime <= end;
+}
+
+function getNotificationChain(employee) {
+  const chain = [];
+  if (employee.reports_to) {
+    const manager = queryOne('SELECT * FROM employees WHERE id = ?', [employee.reports_to]);
+    if (manager) {
+      chain.push({ name: manager.name, role: manager.role, id: manager.id });
+      if (manager.reports_to) {
+        const tl = queryOne('SELECT * FROM employees WHERE id = ?', [manager.reports_to]);
+        if (tl) {
+          chain.push({ name: tl.name, role: tl.role, id: tl.id });
+          if (tl.reports_to) {
+            const hr = queryOne('SELECT * FROM employees WHERE id = ?', [tl.reports_to]);
+            if (hr) chain.push({ name: hr.name, role: hr.role, id: hr.id });
+          }
+        }
+      }
+    }
+  }
+  const hrEmployees = queryAll("SELECT * FROM employees WHERE role = 'hr'");
+  hrEmployees.forEach(hr => {
+    if (!chain.find(c => c.id === hr.id)) {
+      chain.push({ name: hr.name, role: hr.role, id: hr.id });
+    }
+  });
+  return chain;
+}
+
 router.post('/api/agent/heartbeat', (req, res) => {
   const { agent_key } = req.body;
   const employee = verifyAgent(agent_key);
@@ -55,6 +101,8 @@ router.post('/api/agent/screenshot', upload.single('screenshot'), (req, res) => 
     io.emit('new_screenshot', {
       employee_id: employee.id,
       employee_name: employee.name,
+      emp_id: employee.emp_id,
+      department: employee.department,
       filename,
       filepath: relPath,
       timestamp: new Date().toISOString()
@@ -76,20 +124,46 @@ router.post('/api/agent/activity', (req, res) => {
   runSql('INSERT INTO activities (employee_id, activity_type, mouse_clicks, keystrokes, mouse_movement, idle_time, active_window, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now"))',
     [employee.id, type || 'general', mouse_clicks || 0, keystrokes || 0, mouse_movement || 0, idle_time || 0, active_window || null]);
 
-  if ((idle_time || 0) >= 900) {
-    const existing = queryOne('SELECT id FROM alerts WHERE employee_id = ? AND alert_type = ? AND created_at >= datetime("now", "-30 minutes")', [employee.id, 'idle']);
-    if (!existing) {
-      const message = `${employee.name} has been idle for ${Math.floor(idle_time / 60)} minutes`;
-      runSql('INSERT INTO alerts (employee_id, alert_type, message, severity) VALUES (?, ?, ?, ?)', [employee.id, 'idle', message, 'warning']);
+  const io = req.app.get('io');
 
-      const io = req.app.get('io');
+  const breakTime = isBreakTime(employee);
+  const workingHours = isWorkingHours(employee);
+
+  if ((idle_time || 0) >= 300 && workingHours && !breakTime) {
+    const existing = queryOne('SELECT id FROM alerts WHERE employee_id = ? AND alert_type = ? AND created_at >= datetime("now", "-10 minutes")', [employee.id, 'idle']);
+    if (!existing) {
+      const idleMinutes = Math.floor(idle_time / 60);
+      const message = `${employee.name} (${employee.emp_id || 'N/A'}) has been idle for ${idleMinutes} minutes during working hours`;
+
+      const chain = getNotificationChain(employee);
+      const notifiedTo = chain.map(c => `${c.name}(${c.role})`).join(', ');
+
+      runSql('INSERT INTO alerts (employee_id, alert_type, message, severity, notified_to) VALUES (?, ?, ?, ?, ?)',
+        [employee.id, 'idle', message, 'warning', notifiedTo]);
+
       io.emit('new_alert', {
         employee_id: employee.id,
         employee_name: employee.name,
+        emp_id: employee.emp_id,
+        department: employee.department,
         type: 'idle',
         message,
         severity: 'warning',
+        notified_to: notifiedTo,
         timestamp: new Date().toISOString()
+      });
+
+      chain.forEach(person => {
+        io.emit('manager_alert', {
+          notify_to: person.id,
+          notify_name: person.name,
+          notify_role: person.role,
+          employee_name: employee.name,
+          emp_id: employee.emp_id,
+          department: employee.department,
+          message,
+          timestamp: new Date().toISOString()
+        });
       });
     }
   }
@@ -150,6 +224,8 @@ router.post('/api/agent/live-screen', upload.single('screenshot'), (req, res) =>
     io.emit('live_screen', {
       employee_id: employee.id,
       employee_name: employee.name,
+      emp_id: employee.emp_id,
+      department: employee.department,
       image: b64,
       timestamp: new Date().toISOString()
     });

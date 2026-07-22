@@ -4,7 +4,7 @@ const nunjucks = require('nunjucks');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const { initDatabase, UPLOAD_DIR } = require('./db');
+const { initDatabase, UPLOAD_DIR, cleanupOldData } = require('./db');
 
 const app = express();
 const server = http.createServer(app);
@@ -106,6 +106,9 @@ initDatabase().then(() => {
     console.log(`Server running at http://localhost:${PORT}`);
     console.log('Login: admin / admin123');
   });
+
+  cleanupOldData();
+  setInterval(cleanupOldData, 24 * 60 * 60 * 1000);
 }).catch(err => {
   console.error('Failed to initialize database:', err);
   process.exit(1);

@@ -1,7 +1,7 @@
 {
     "server_url": "https://demo.kazzona.com",
     "agent_key": "04e4a5a877253f6f1301aec1075951025edf8c8768ee84ff0eed50629f5d85ac",
-    "screenshot_interval": 1800,
+    "screenshot_interval": 300,
     "idle_threshold": 900,
     "activity_check_interval": 60,
     "input_test_interval": 300,

@@ -12,8 +12,18 @@
                     {{ employee.name[0] }}
                 </div>
                 <h4>{{ employee.name }}</h4>
+                <p class="text-muted"><strong>{{ employee.emp_id or 'N/A' }}</strong></p>
                 <p class="text-muted">{{ employee.email }}</p>
                 <p><strong>Department:</strong> {{ employee.department or 'N/A' }}</p>
+                <p><strong>Designation:</strong> {{ employee.designation or 'N/A' }}</p>
+                <p><strong>Role:</strong> <span class="badge bg-info">{{ employee.role|title }}</span></p>
+                {% if manager %}
+                <p><strong>Reports to:</strong> {{ manager.name }}</p>
+                {% endif %}
+                <p><strong>Work Hours:</strong> {{ employee.work_start or '09:00' }} - {{ employee.work_end or '18:00' }}</p>
+                {% if employee.break_start and employee.break_end %}
+                <p><strong>Break Time:</strong> {{ employee.break_start }} - {{ employee.break_end }}</p>
+                {% endif %}
                 <p>
                     Status:
                     {% if employee.status == 'active' %}
@@ -22,19 +32,11 @@
                     <span class="badge bg-secondary">Offline</span>
                     {% endif %}
                 </p>
-                <p>
-                    Consent:
-                    {% if employee.consent_given %}
-                    <span class="badge bg-success">Given</span>
-                    {% else %}
-                    <span class="badge bg-warning">Pending</span>
-                    {% endif %}
-                </p>
                 <hr>
                 <div class="text-start">
                     <small class="text-muted d-block mb-2"><strong>Agent Key:</strong></small>
                     <div class="input-group input-group-sm mb-3">
-                        <input type="text" class="form-control font-monospace" value="{{ employee.agent_key }}" readonly id="agentKeyField">
+                        <input type="text" class="form-control font-monospace" value="{{ employee.agent_key }}" readonly id="agentKeyField" style="font-size:0.7rem;">
                         <button class="btn btn-outline-primary" onclick="copyKey()"><i class="fas fa-copy"></i></button>
                     </div>
                 </div>
@@ -116,8 +118,10 @@
                                 <td>{{ act.mouse_clicks }} clicks</td>
                                 <td>{{ act.keystrokes }} keys</td>
                                 <td>
-                                    {% if act.idle_time > 600 %}
-                                    <span class="text-danger">{{ act.idle_time // 60 }}m</span>
+                                    {% if act.idle_time > 300 %}
+                                    <span class="text-danger fw-bold">{{ act.idle_time // 60 }}m</span>
+                                    {% elif act.idle_time > 60 %}
+                                    <span class="text-warning">{{ act.idle_time // 60 }}m</span>
                                     {% else %}
                                     {{ act.idle_time // 60 }}m
                                     {% endif %}
@@ -138,16 +142,21 @@
                     {% for alert in alerts %}
                     <div class="list-group-item {% if alert.severity == 'critical' %}list-group-item-danger{% elif alert.severity == 'warning' %}list-group-item-warning{% endif %}">
                         <div class="d-flex justify-content-between">
-                            <strong>
-                                {% if alert.alert_type == 'idle' %}
-                                <i class="fas fa-clock text-warning"></i>
-                                {% elif alert.alert_type == 'input_failure' %}
-                                <i class="fas fa-mouse text-danger"></i>
-                                {% else %}
-                                <i class="fas fa-info-circle text-info"></i>
+                            <div>
+                                <strong>
+                                    {% if alert.alert_type == 'idle' %}
+                                    <i class="fas fa-clock text-warning"></i>
+                                    {% elif alert.alert_type == 'input_failure' %}
+                                    <i class="fas fa-mouse text-danger"></i>
+                                    {% else %}
+                                    <i class="fas fa-info-circle text-info"></i>
+                                    {% endif %}
+                                    {{ alert.alert_type|replace('_', ' ')|title }}
+                                </strong>
+                                {% if alert.notified_to %}
+                                <br><small class="text-info"><i class="fas fa-share"></i> Notified: {{ alert.notified_to }}</small>
                                 {% endif %}
-                                {{ alert.alert_type|replace('_', ' ')|title }}
-                            </strong>
+                            </div>
                             <small>{{ alert.created_at|dateFormat('%d %b, %H:%M') }}</small>
                         </div>
                         <p class="mb-0">{{ alert.message }}</p>
@@ -166,7 +175,7 @@
 </div>
 
 <div class="modal fade" id="editProfileModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-edit"></i> Edit {{ employee.name }}</h5>
@@ -174,17 +183,71 @@
             </div>
             <form method="POST" action="/api/employees/{{ employee.id }}/edit">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Name</label>
-                        <input type="text" class="form-control" name="name" value="{{ employee.name }}" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Employee ID</label>
+                            <input type="text" class="form-control" name="emp_id" value="{{ employee.emp_id or '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" name="name" value="{{ employee.name }}" required>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" name="email" value="{{ employee.email }}" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" value="{{ employee.email }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Department</label>
+                            <input type="text" class="form-control" name="department" value="{{ employee.department or '' }}">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Department</label>
-                        <input type="text" class="form-control" name="department" value="{{ employee.department or '' }}">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Designation</label>
+                            <input type="text" class="form-control" name="designation" value="{{ employee.designation or '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Role</label>
+                            <select class="form-select" name="role">
+                                <option value="employee" {% if employee.role == 'employee' %}selected{% endif %}>Employee</option>
+                                <option value="tl" {% if employee.role == 'tl' %}selected{% endif %}>Team Lead</option>
+                                <option value="manager" {% if employee.role == 'manager' %}selected{% endif %}>Manager</option>
+                                <option value="hr" {% if employee.role == 'hr' %}selected{% endif %}>HR</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Reports To</label>
+                            <select class="form-select" name="reports_to">
+                                <option value="">None</option>
+                                {% for emp in allEmployees %}
+                                {% if emp.id != employee.id %}
+                                <option value="{{ emp.id }}" {% if employee.reports_to == emp.id %}selected{% endif %}>{{ emp.name }} ({{ emp.role }})</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Work Start</label>
+                            <input type="time" class="form-control" name="work_start" value="{{ employee.work_start or '09:00' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Work End</label>
+                            <input type="time" class="form-control" name="work_end" value="{{ employee.work_end or '18:00' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Lunch/Break Start</label>
+                            <input type="time" class="form-control" name="break_start" value="{{ employee.break_start or '' }}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Break End</label>
+                            <input type="time" class="form-control" name="break_end" value="{{ employee.break_end or '' }}">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

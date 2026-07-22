@@ -39,15 +39,24 @@ async function initDatabase() {
   db.run(`
     CREATE TABLE IF NOT EXISTS employees (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      emp_id TEXT UNIQUE,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       department TEXT,
+      designation TEXT,
+      role TEXT DEFAULT 'employee',
+      reports_to INTEGER,
       laptop_id TEXT,
       status TEXT DEFAULT 'offline',
       agent_key TEXT UNIQUE NOT NULL,
+      break_start TEXT,
+      break_end TEXT,
+      work_start TEXT DEFAULT '09:00',
+      work_end TEXT DEFAULT '18:00',
       consent_given INTEGER DEFAULT 0,
       consent_date DATETIME,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (reports_to) REFERENCES employees(id)
     )
   `);
 
@@ -88,6 +97,7 @@ async function initDatabase() {
       message TEXT NOT NULL,
       severity TEXT DEFAULT 'warning',
       is_read INTEGER DEFAULT 0,
+      notified_to TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
     )
@@ -107,16 +117,29 @@ async function initDatabase() {
     console.log('[OK] Default admin created -> admin / admin123');
   }
 
-  const empResult = db.exec('SELECT id FROM employees WHERE id = 1');
-  if (!empResult.length || empResult[0].values.length === 0) {
-    const agentKey = '04e4a5a877253f6f1301aec1075951025edf8c8768ee84ff0eed50629f5d85ac';
-    db.run('INSERT INTO employees (name, email, department, agent_key, consent_given, consent_date) VALUES (?, ?, ?, ?, 1, datetime("now"))',
-      ['Demo', 'demo@example.com', 'General', agentKey]);
-    console.log('[OK] Default employee created -> Demo / agent_key: ' + agentKey);
-  }
+  db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('auto_cleanup_days', '2')");
+  db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('idle_alert_threshold', '300')");
+  db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('work_start', '09:00')");
+  db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('work_end', '18:00')");
 
   saveDatabase();
   console.log('[OK] Database initialized');
+}
+
+function cleanupOldData() {
+  try {
+    const daysSetting = queryOne("SELECT value FROM settings WHERE key = 'auto_cleanup_days'");
+    const days = daysSetting ? parseInt(daysSetting.value) : 2;
+    const cutoff = `datetime('now', '-${days} days')`;
+
+    db.run(`DELETE FROM screenshots WHERE captured_at < ${cutoff}`);
+    db.run(`DELETE FROM activities WHERE recorded_at < ${cutoff}`);
+    db.run(`DELETE FROM alerts WHERE created_at < ${cutoff}`);
+    saveDatabase();
+    console.log(`[OK] Cleaned up data older than ${days} days`);
+  } catch (err) {
+    console.error('[ERROR] Cleanup failed:', err);
+  }
 }
 
 function saveDatabase() {
@@ -154,4 +177,4 @@ function runSql(sql, params = []) {
   saveDatabase();
 }
 
-module.exports = { db, initDatabase, UPLOAD_DIR, queryAll, queryOne, runSql, saveDatabase };
+module.exports = { db, initDatabase, UPLOAD_DIR, queryAll, queryOne, runSql, saveDatabase, cleanupOldData };
