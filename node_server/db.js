@@ -122,6 +122,24 @@ async function initDatabase() {
   db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('work_start', '09:00')");
   db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('work_end', '18:00')");
 
+  try { db.run("ALTER TABLE employees ADD COLUMN emp_id TEXT"); } catch(e) {}
+  try { db.run("ALTER TABLE employees ADD COLUMN designation TEXT"); } catch(e) {}
+  try { db.run("ALTER TABLE employees ADD COLUMN role TEXT DEFAULT 'employee'"); } catch(e) {}
+  try { db.run("ALTER TABLE employees ADD COLUMN reports_to INTEGER"); } catch(e) {}
+  try { db.run("ALTER TABLE employees ADD COLUMN break_start TEXT"); } catch(e) {}
+  try { db.run("ALTER TABLE employees ADD COLUMN break_end TEXT"); } catch(e) {}
+  try { db.run("ALTER TABLE employees ADD COLUMN work_start TEXT DEFAULT '09:00'"); } catch(e) {}
+  try { db.run("ALTER TABLE employees ADD COLUMN work_end TEXT DEFAULT '18:00'"); } catch(e) {}
+  try { db.run("ALTER TABLE alerts ADD COLUMN notified_to TEXT"); } catch(e) {}
+
+  const empResult = db.exec('SELECT id FROM employees WHERE id = 1');
+  if (!empResult.length || empResult[0].values.length === 0) {
+    const agentKey = '04e4a5a877253f6f1301aec1075951025edf8c8768ee84ff0eed50629f5d85ac';
+    db.run('INSERT INTO employees (emp_id, name, email, department, designation, role, agent_key, consent_given, consent_date) VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime("now"))',
+      ['EMP001', 'Demo', 'demo@example.com', 'General', 'Employee', 'employee', agentKey]);
+    console.log('[OK] Default employee created -> Demo / EMP001');
+  }
+
   saveDatabase();
   console.log('[OK] Database initialized');
 }

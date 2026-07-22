@@ -8,7 +8,16 @@ def get_persistent_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def fix_certifi():
+    if getattr(sys, 'frozen', False):
+        certifi_pem = os.path.join(sys._MEIPASS, 'certifi', 'cacert.pem')
+        if os.path.exists(certifi_pem):
+            os.environ['SSL_CERT_FILE'] = certifi_pem
+            os.environ['REQUESTS_CA_BUNDLE'] = certifi_pem
+
+
 def main():
+    fix_certifi()
     persistent_config = os.path.join(get_persistent_dir(), 'config.json')
 
     if '--setup' in sys.argv or not os.path.exists(persistent_config):
