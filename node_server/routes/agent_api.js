@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { UPLOAD_DIR, queryOne, runSql } = require('../db');
+const { UPLOAD_DIR, queryAll, queryOne, runSql } = require('../db');
 
 const upload = multer({
   dest: path.join(__dirname, '..', 'uploads', 'tmp'),
