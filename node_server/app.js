@@ -99,6 +99,11 @@ app.use(alertRoutes);
 app.use(reportRoutes);
 app.use(settingsRoutes);
 
+app.use((err, req, res, next) => {
+  console.error('[EXPRESS ERROR]', err.message, err.stack);
+  res.status(500).send('<pre>Dashboard Error: ' + err.message + '</pre>');
+});
+
 const PORT = process.env.PORT || 5000;
 
 initDatabase().then(() => {
