@@ -16,7 +16,8 @@
                         {% if emp.status == 'active' %}
                         <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.emp_id or 'N/A' }}) - {{ emp.department or 'N/A' }}</option>
                         {% endif %}
-                        {% endfor %}
+        {% endfor %}
+        {% endif %}
                     </select>
                     <span class="badge bg-success ms-2" id="liveStatus" style="display:none;">
                         <i class="fas fa-circle fa-pulse"></i> LIVE
@@ -175,7 +176,8 @@
         </div>
         {% endif %}
 
-        {% for dept, emps in grouped_employees.items() if dept not in ['hr', 'tl', 'manager', 'employee'] %}
+        {% for dept, emps in grouped_employees %}
+        {% if dept != 'hr' and dept != 'tl' and dept != 'manager' and dept != 'employee' %}
         <div class="card mb-3">
             <div class="card-header">
                 <h6 class="mb-0"><i class="fas fa-building"></i> {{ dept|title }}</h6>
@@ -200,6 +202,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         {% endfor %}
 
         {% if grouped_employees['employee'] %}
