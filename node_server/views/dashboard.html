@@ -16,8 +16,7 @@
                         {% if emp.status == 'active' %}
                         <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.emp_id or 'N/A' }}) - {{ emp.department or 'N/A' }}</option>
                         {% endif %}
-        {% endfor %}
-        {% endif %}
+                        {% endfor %}
                     </select>
                     <span class="badge bg-success ms-2" id="liveStatus" style="display:none;">
                         <i class="fas fa-circle fa-pulse"></i> LIVE
